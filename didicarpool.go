@@ -205,7 +205,7 @@ func (order originalOrder) toRoute() Route {
 
 var (
 	rePassengers         = regexp.MustCompile(`(\d)人`)
-	reDepartureTimeMonth = regexp.MustCompile(`\d+月\d+日`)
+	reDepartureTimeMonth = regexp.MustCompile(`(\d+月\d+日|今天)`)
 	reDepartureTimeTime  = regexp.MustCompile(`\d+:\d+`)
 	timezone             = time.FixedZone("UTC+8", 8*60*60)
 )
@@ -224,11 +224,17 @@ func (order originalOrder) getPassengers() int {
 
 func (order originalOrder) getTimes() (createdAt, startedAt time.Time) {
 	createdAt, _ = time.ParseInLocation("2006-01-02 15:04:05", order.StriveTime, timezone)
-	month, _ := time.ParseInLocation("01月02日", reDepartureTimeMonth.FindString(order.DepartureTime), timezone)
+	var date time.Time
+	dateStr := reDepartureTimeMonth.FindString(order.DepartureTime)
+	if dateStr == "今天" {
+		date = time.Now()
+	} else {
+		date, _ = time.ParseInLocation("01月02日", dateStr, timezone)
+	}
 	t, _ := time.ParseInLocation("15:04", reDepartureTimeTime.FindString(order.DepartureTime), timezone)
-	startedAt = time.Date(createdAt.Year(), month.Month(), month.Day(), t.Hour(), t.Minute(), 0, 0, timezone)
+	startedAt = time.Date(createdAt.Year(), date.Month(), date.Day(), t.Hour(), t.Minute(), 0, 0, timezone)
 	if startedAt.Before(createdAt) {
-		startedAt = time.Date(createdAt.Year()+1, month.Month(), month.Day(), t.Hour(), t.Minute(), 0, 0, timezone)
+		startedAt = time.Date(createdAt.Year()+1, date.Month(), date.Day(), t.Hour(), t.Minute(), 0, 0, timezone)
 	}
 	return
 }
